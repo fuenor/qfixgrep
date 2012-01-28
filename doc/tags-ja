@@ -1,0 +1,12 @@
+!_TAG_FILE_ENCODING	utf-8	//
+qfixgrep	qfixgrep.jax	/*qfixgrep*
+qfixgrep.jax	qfixgrep.jax	/*qfixgrep.jax*
+qfixgrep_command	qfixgrep.jax	/*qfixgrep_command*
+qfixgrep_commandline	qfixgrep.jax	/*qfixgrep_commandline*
+qfixgrep_contents	qfixgrep.jax	/*qfixgrep_contents*
+qfixgrep_help	qfixgrep.jax	/*qfixgrep_help*
+qfixgrep_install	qfixgrep.jax	/*qfixgrep_install*
+qfixgrep_install_windows	qfixgrep.jax	/*qfixgrep_install_windows*
+qfixgrep_intro	qfixgrep.jax	/*qfixgrep_intro*
+qfixgrep_option	qfixgrep.jax	/*qfixgrep_option*
+qfixgrep_quickfix	qfixgrep.jax	/*qfixgrep_quickfix*

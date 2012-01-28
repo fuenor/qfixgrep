@@ -57,6 +57,8 @@ scriptencoding utf-8
 "    | ignorecase   | let g:MyGrep_Ignorecase = 1 | MyGrep_DefaultIgnorecase (*) |
 "    | smartcase    | let g:MyGrep_Smartcase  = 1 | 1                            |
 "      (*) reset to default after qfixlist#grep()
+"
+"
 
 if exists('g:disable_QFixList') && g:disable_QFixList == 1
   finish
@@ -100,6 +102,23 @@ if !exists('g:qfixlist_use_fnamemodify')
   let g:qfixlist_use_fnamemodify = 0
 endif
 
+" 非0ならqfixlist#open()の代わりにQFixListAltOpen()が実行される
+if !exists('g:QFixListAltOpen')
+  let g:QFixListAltOpen = 0
+endif
+if !exists('*QFixListAltOpen')
+function QFixListAltOpen(qflist, dir)
+endfunction
+endif
+" 非0ならqfixlist#copen()の代わりにQFixListAltCopen()が実行される
+if !exists('g:QFixListAltCopen')
+  let g:QFixListAltCopen = 0
+endif
+if !exists('*QFixListAltCopen')
+function QFixListAltCopen(qflist, dir)
+endfunction
+endif
+
 function! qfixlist#GrepCopen(pattern, dir, file, ...)
   let fenc = a:0 ? a:1 : &enc
   let qflist = qfixlist#search(a:pattern, a:dir, '', 0, fenc, a:file)
@@ -129,20 +148,20 @@ function! qfixlist#copen(...)
   if a:0 > 1
     let s:QFixList_qfdir = a:2
   endif
+  " ユーザー定義の関数で処理する
+  if g:QFixListAltCopen
+    return QFixListAltCopen(deepcopy(s:QFixList_qfCache), s:QFixList_qfdir)
+  endif
   if len(s:QFixList_qfCache) == 0
     if g:MyGrep_ErrorMes != ''
-      echohl ErrorMsg
+      " echohl ErrorMsg
       redraw | echo g:MyGrep_ErrorMes
       let g:MyGrep_ErrorMes = ''
-      echohl None
+      " echohl None
     else
       redraw | echo 'QFixList : Nothing in list!'
     endif
     return
-  endif
-  " ユーザー定義の関数で表示する場合
-  if exists('*QFixListAltCopen')
-    return QFixListAltCopen(s:QFixList_qfCache, s:QFixList_qfdir)
   endif
   redraw | echo 'QFixList : Set QuickFix list...'
   call QFixPclose()
@@ -154,18 +173,17 @@ function! qfixlist#copen(...)
   endif
   redraw | echo ''
   if g:MyGrep_ErrorMes != ''
-    echohl ErrorMsg
+    " echohl ErrorMsg
     redraw | echo g:MyGrep_ErrorMes
     let g:MyGrep_ErrorMes = ''
-    echohl None
+    " echohl None
   endif
 endfunction
 
+let s:qfixlistloaded = 1
 function! qfixlist#open(...)
-  if g:qfixlist_autoclose
-    call QFixCclose()
-  endif
-  let loaded = 1
+  let loaded = s:qfixlistloaded
+  let s:qfixlistloaded = 1
   if a:0 > 0
     let s:QFixList_Cache = deepcopy(a:1)
     let loaded = 0
@@ -173,20 +191,24 @@ function! qfixlist#open(...)
   if a:0 > 1
     let s:QFixList_dir = a:2
   endif
+  " ユーザー定義の関数で処理する
+  if g:QFixListAltOpen
+    let s:qfixlistloaded = 0
+    return QFixListAltOpen(deepcopy(s:QFixList_Cache), s:QFixList_dir)
+  endif
+  if g:qfixlist_autoclose
+    call QFixCclose()
+  endif
   if len(s:QFixList_Cache) == 0
-    echohl ErrorMsg
+    " echohl ErrorMsg
     if g:MyGrep_ErrorMes != ''
       redraw | echo g:MyGrep_ErrorMes
       let g:MyGrep_ErrorMes = ''
     else
       redraw | echo 'QFixList : Nothing in list!'
     endif
-    echohl None
+    " echohl None
     return
-  endif
-  " ユーザー定義の関数で表示する場合
-  if exists('*QFixListAltOpen')
-    return QFixListAltOpen(s:QFixList_Cache, s:QFixList_dir)
   endif
   call QFixPclose(1)
   let path = s:QFixList_dir
@@ -302,11 +324,10 @@ function! qfixlist#open(...)
   nnoremap <buffer> <silent> O :MyGrepReadResult<CR>
 
   if g:MyGrep_ErrorMes != ''
-    echohl ErrorMsg
+    " echohl ErrorMsg
     redraw | echo g:MyGrep_ErrorMes
     let g:MyGrep_ErrorMes = ''
-    echohl None
-    let g:MyGrep_ErrorMes = ''
+    " echohl None
   endif
 endfunction
 
@@ -326,11 +347,23 @@ function! qfixlist#Sort(cmd, sq)
   return sq
 endfunction
 
-function! qfixlist#GetList(cmd)
-  if a:cmd == 'copen' || a:cmd == 'quickfix'
-    return [s:QFixList_qfCache, s:QFixList_qfdir]
+function! qfixlist#GetList(...)
+  let cmd = a:0 ? a:1 : ''
+  if cmd == 'copen' || cmd == 'quickfix'
+    return [deepcopy(s:QFixList_qfCache), s:QFixList_qfdir]
   else
-    return [s:QFixList_Cache, s:QFixList_dir]
+    return [deepcopy(s:QFixList_Cache), s:QFixList_dir]
+  endif
+endfunction
+
+function! qfixlist#SetList(qflist, path, ...)
+  let cmd = a:0 ? a:1 : ''
+  if cmd == 'copen' || cmd == 'quickfix'
+    let s:QFixList_qfCache = deepcopy(a:qflist)
+    let s:QFixList_qfdir   = a:path
+  else
+    let s:QFixList_Cache = deepcopy(a:qflist)
+    let s:QFixList_dir   = a:path
   endif
 endfunction
 
@@ -734,9 +767,9 @@ function! s:Cmd_RD(cmd, fline, lline)
     if a:cmd == 'Delete'
       call delete(file)
     elseif a:cmd == 'Remove'
-      echohl ErrorMsg
+      " echohl ErrorMsg
       echo 'Remove' fnamemodify(file, ':t')
-      echohl None
+      " echohl None
       call rename(file, dst)
     endif
   endfor
@@ -917,18 +950,18 @@ function! s:MyGrep(pattern, searchPath, filepattern, fenc, addflag, ...)
   if vg == 0 && s:MSWindows && cmdpath =~ '^\(//\|\\\\\)'
     let host = matchstr(cmdpath, '^\(//\|\\\\\)[^/\\]\+')
     let host = substitute(host, '/', '\', 'g')
-    echohl ErrorMsg
+    " echohl ErrorMsg
     let grepprg = fnamemodify(g:mygrepprg, ':t')
     redraw|echo 'using vimgrep... ('. grepprg .' does not support UNC path "' . host . '")'
-    echohl None
+    " echohl None
     let g:MyGrep_UseVimgrep = 1
     let g:MyGrep_ErrorMes = 'QFixGrep : Vimgrep was used. (UNC path "' . host . '")'
   endif
   if vg == 0 && pattern != '' && pattern !~ '^[[:print:][:space:]]\+$'
     if a:fenc =~ 'le$' || (a:fenc !~ 'cp932\c' && g:mygrepprg == 'findstr') || a:fenc !~ g:MyGrep_Encoding
-      echohl ErrorMsg
+      " echohl ErrorMsg
       redraw|echo 'using vimgrep... (grep does not support "' . a:fenc . '")'
-      echohl None
+      " echohl None
       let g:MyGrep_ErrorMes = 'QFixGrep : Vimgrep was used. (invalid fenc = "'.a:fenc .'")'
       let g:MyGrep_UseVimgrep = 1
     endif
@@ -942,6 +975,8 @@ function! s:MyGrep(pattern, searchPath, filepattern, fenc, addflag, ...)
     else
       silent! exe ':'.vopt.'vimgrep /' . pattern . '/j ' . a:filepattern
     endif
+    " FIXME:vimgrepでエラーが出るとコマンドラインのシンタックスがおかしくなる
+    echohl None
     "ここでバッファ削除
     let idx = 0
     let save_qflist = QFixGetqflist()
@@ -961,11 +996,11 @@ function! s:MyGrep(pattern, searchPath, filepattern, fenc, addflag, ...)
     let g:MyGrep_Ignorecase = g:MyGrep_DefaultIgnorecase
     let g:MyGrep_Recursive  = 0
     let g:MyGrep_UseVimgrep = 0
-    if g:MyGrep_ErrorMes != ''
-      echohl ErrorMsg
-      redraw | echo g:MyGrep_ErrorMes
-      echohl None
-    endif
+    " if g:MyGrep_ErrorMes != ''
+    "   echohl ErrorMsg
+    "   redraw | echo g:MyGrep_ErrorMes
+    "   echohl None
+    " endif
     " if g:MyGrep_Return
     "   let g:MyGrep_Return = 0
       return save_qflist
@@ -978,7 +1013,7 @@ function! s:MyGrep(pattern, searchPath, filepattern, fenc, addflag, ...)
   let l:mygrepprg = expand(g:mygrepprg)
   if !executable(l:mygrepprg)
     echohl ErrorMsg
-    redraw|echom '"'.l:mygrepprg.'"'." is not executable!"
+    redraw|echo '"'.l:mygrepprg.'"'." is not executable!"
     echohl None
     let mes = '"'.l:mygrepprg.'" is not executable!'
     let choice = confirm(mes, "&OK", 1, "W")
