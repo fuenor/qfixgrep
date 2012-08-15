@@ -5,7 +5,7 @@
 "                   http://sites.google.com/site/fudist/Home/grep
 "         Author: fuenor <fuenor@gmail.com>
 "=============================================================================
-let s:version = 287
+let s:version = 289
 scriptencoding utf-8
 
 " What Is This:
@@ -101,6 +101,9 @@ endif
 if !exists('g:qfixlist_use_fnamemodify')
   let g:qfixlist_use_fnamemodify = 0
 endif
+if !exists('g:qfixlist_grep_sort')
+  let g:qfixlist_grep_sort = ''
+endif
 
 " 非0ならqfixlist#open()の代わりにQFixListAltOpen()が実行される
 if !exists('g:QFixListAltOpen')
@@ -121,24 +124,46 @@ endif
 
 function! qfixlist#GrepCopen(pattern, dir, file, ...)
   let fenc = a:0 ? a:1 : &enc
-  let qflist = qfixlist#search(a:pattern, a:dir, '', 0, fenc, a:file)
+  let qflist = qfixlist#search(a:pattern, a:dir, g:qfixlist_grep_sort, 0, fenc, a:file)
   call qfixlist#copen(qflist, a:dir)
 endfunction
 
 function! qfixlist#GrepOpen(pattern, dir, file, ...)
   let fenc = a:0 ? a:1 : &enc
-  let qflist = qfixlist#search(a:pattern, a:dir, '', 0, fenc, a:file)
+  let qflist = qfixlist#search(a:pattern, a:dir, g:qfixlist_grep_sort, 0, fenc, a:file)
   call qfixlist#open(qflist, a:dir)
 endfunction
 
 function! qfixlist#grep(pattern, dir, file, ...)
   let fenc = a:0 ? a:1 : &enc
-  return qfixlist#search(a:pattern, a:dir, '', 0, fenc, a:file)
+  return qfixlist#search(a:pattern, a:dir, g:qfixlist_grep_sort, 0, fenc, a:file)
+endfunction
+
+function! qfixlist#sortgrep(pattern, dir, sort, file, ...)
+  let fenc = a:0 ? a:1 : &enc
+  return qfixlist#search(a:pattern, a:dir, a:sort, 0, fenc, a:file)
 endfunction
 
 function! qfixlist#getqflist(pattern, dir, file, ...)
   let fenc = a:0 ? a:1 : &enc
   return qfixlist#search(a:pattern, a:dir, '', 0, fenc, a:file)
+endfunction
+
+function! qfixlist#sort(cmd, sq)
+  if a:cmd =~ 'mtime'
+    call qfixlist#addmtime(a:sq)
+    let sq = sort(a:sq, "s:CompareTime")
+  elseif a:cmd =~ 'name'
+    let sq = sort(a:sq, "s:CompareName")
+  elseif a:cmd =~ 'bufnr'
+    let sq = sort(a:sq, "s:CompareBufnr")
+  elseif a:cmd =~ 'text'
+    let sq = sort(a:sq, "s:CompareText")
+  endif
+  if a:cmd =~ 'r.*'
+    let sq = reverse(a:sq)
+  endif
+  return sq
 endfunction
 
 function! qfixlist#copen(...)
@@ -244,6 +269,8 @@ function! qfixlist#open(...)
     exe aftercmd
   endif
   if loaded
+    let b:qfixlist_lnum = exists('b:qfixlist_lnum') ? b:qfixlist_lnum : line('.')
+    call cursor(b:qfixlist_lnum, 1)
     silent! exe 'lchdir ' . escape(s:QFixList_dir, ' ')
     return
   endif
@@ -331,22 +358,6 @@ function! qfixlist#open(...)
   endif
 endfunction
 
-function! qfixlist#Sort(cmd, sq)
-  if a:cmd =~ 'mtime'
-    let sq = sort(a:sq, "s:CompareTime")
-  elseif a:cmd =~ 'name'
-    let sq = sort(a:sq, "s:CompareName")
-  elseif a:cmd =~ 'bufnr'
-    let sq = sort(a:sq, "s:CompareBufnr")
-  elseif a:cmd =~ 'text'
-    let sq = sort(a:sq, "s:CompareText")
-  endif
-  if a:cmd =~ 'r.*'
-    let sq = reverse(a:sq)
-  endif
-  return sq
-endfunction
-
 function! qfixlist#GetList(...)
   let cmd = a:0 ? a:1 : ''
   if cmd == 'copen' || cmd == 'quickfix'
@@ -408,17 +419,7 @@ function! qfixlist#search(pattern, dir, cmd, days, fenc, file)
 
   redraw | echo 'QFixList : Sorting...'
   if cmd =~ 'mtime'
-    let bname = ''
-    let bmtime = 0
-    for d in list
-      if bname == d.filename
-        let d['mtime'] = bmtime
-      else
-        let d['mtime'] = getftime(d.filename)
-      endif
-      let bname  = d.filename
-      let bmtime = d.mtime
-    endfor
+    call qfixlist#addmtime(list)
     let list = sort(list, "s:CompareTime")
   elseif cmd =~ 'name'
     let list = sort(list, "s:CompareName")
@@ -434,12 +435,30 @@ function! qfixlist#search(pattern, dir, cmd, days, fenc, file)
   return list
 endfunction
 
+function! qfixlist#addmtime(qf)
+  let bname = ''
+  let bmtime = 0
+  for d in a:qf
+    if exists('d["mtime"]')
+      continue
+    endif
+    if bname == d.filename
+      let d['mtime'] = bmtime
+    else
+      let d['mtime'] = getftime(d.filename)
+    endif
+    let bname  = d.filename
+    let bmtime = d.mtime
+  endfor
+  return a:qf
+endfunction
+
 """"""""""""""""""""""""""""""
 function! s:CompareName(v1, v2)
   if a:v1.filename == a:v2.filename
-    return (a:v1.lnum > a:v2.lnum?1:-1)
+    return (a:v1.lnum+0 > a:v2.lnum+0?1:-1)
   endif
-  return ((a:v1.filename).a:v1.lnum> (a:v2.filename).a:v2.lnum?1:-1)
+  return ((a:v1.filename) > (a:v2.filename)?1:-1)
 endfunction
 
 function! s:CompareTime(v1, v2)
@@ -447,7 +466,7 @@ function! s:CompareTime(v1, v2)
     if a:v1.filename != a:v2.filename
       return (a:v1['filename'] < a:v2['filename']?1:-1)
     endif
-    return (a:v1['lnum'] > a:v2['lnum']?1:-1)
+    return (a:v1['lnum']+0 > a:v2['lnum']+0?1:-1)
   endif
   return (a:v1['mtime'] < a:v2['mtime']?1:-1)
 endfunction
@@ -461,7 +480,7 @@ endfunction
 
 function! s:CompareBufnr(v1, v2)
   if a:v1.bufnr == a:v2.bufnr
-    return (a:v1.lnum > a:v2.lnum?1:-1)
+    return (a:v1.lnum+0 > a:v2.lnum+0?1:-1)
   endif
   return a:v1.bufnr>a:v2.bufnr?1:-1
 endfunction
@@ -676,38 +695,41 @@ function! s:SortExec(...)
   else
     let pattern = input(mes, '')
   endif
-  if pattern =~ 'r\?m'
+  let pattern = matchstr(pattern, 'r\?.')
+  if pattern =~ '^r\?m'
     let g:QFix_Sort = substitute(pattern, 'm', 'mtime', '')
-  elseif pattern =~ 'r\?n'
+  elseif pattern =~ '^r\?n'
     let g:QFix_Sort = substitute(pattern, 'n', 'name', '')
-  elseif pattern =~ 'r\?t'
+  elseif pattern =~ '^r\?t'
     let g:QFix_Sort = substitute(pattern, 't', 'text', '')
-  elseif pattern == 'r'
+  elseif pattern =~ '^r'
     let g:QFix_Sort = 'reverse'
   else
     return
   endif
 
-  echo 'QFixList : Sorting...'
-  let sq = []
-  for n in range(1, line('$'))
-    let [pfile, lnum] = s:Getfile(n)
-    let text = substitute(getline(n), '[^|].*|[^|].*|', '', '')
-    let mtime = getftime(pfile)
-    let sepdat = {"filename":pfile, "lnum": lnum, "text":text, "mtime":mtime, "bufnr":-1}
-    call add(sq, sepdat)
-  endfor
-
+  redraw|echo 'QFixList : Sorting...'
+  " let sq = []
+  " for n in range(1, line('$'))
+  "   let [pfile, lnum] = s:Getfile(n)
+  "   let text = substitute(getline(n), '[^|].*|[^|].*|', '', '')
+  "   let sepdat = {"filename":pfile, "lnum": lnum, "text":text}
+  "   call add(sq, sepdat)
+  " endfor
+  " let s:QFixList_Cache = sq
+  let sq = s:QFixList_Cache
   if g:QFix_Sort =~ 'mtime'
-    let sq = qfixlist#Sort(g:QFix_Sort, sq)
+    call qfixlist#addmtime(sq)
+    let sq = qfixlist#sort(g:QFix_Sort, sq)
   elseif g:QFix_Sort =~ 'name'
-    let sq = qfixlist#Sort(g:QFix_Sort, sq)
+    let sq = qfixlist#sort(g:QFix_Sort, sq)
   elseif g:QFix_Sort =~ 'text'
-    let sq = qfixlist#Sort(g:QFix_Sort, sq)
+    let sq = qfixlist#sort(g:QFix_Sort, sq)
   elseif g:QFix_Sort == 'reverse'
     let sq = reverse(sq)
   endif
   silent! exe 'lchdir ' . escape(s:QFixList_dir, ' ')
+  let s:QFixList_Cache = deepcopy(sq)
   let s:glist = []
   for d in sq
     let filename = fnamemodify(d['filename'], ':.')
@@ -781,7 +803,7 @@ endfunction
 "         Author: fuenor <fuenor@gmail.com>
 "                 http://sites.google.com/site/fudist/Home/grep
 "================================================================================
-let s:MSWindows = has('win95') + has('win16') + has('win32') + has('win64')
+let s:MSWindows = has('win95') || has('win16') || has('win32') || has('win64')
 
 " 使用するgrep指定
 if !exists('g:mygrepprg')
@@ -793,17 +815,6 @@ if !exists('g:mygrepprg')
     let g:mygrepprg = 'grep'
   endif
 endif
-" 日本語が含まれる場合のgrep指定
-if !exists('myjpgrepprg')
-  let myjpgrepprg = ''
-endif
-" grepを実行する際に$LANGも設定する
-if !exists('g:MyGrep_LANG')
-  let g:MyGrep_LANG = ''
-  if s:MSWindows && exists('$LANG') && $LANG=~ 'ja'
-    let MyGrep_LANG = 'ja_JP.SJIS'
-  endif
-endif
 " let mygrepprg=findstr, let mygrepprg=grepで切り替え可能に
 if !exists('g:grep') && exists('g:mygrepprg')
   let g:grep = g:mygrepprg
@@ -811,6 +822,34 @@ endif
 if !exists('g:findstr')
   let g:findstr = 'findstr'
 endif
+
+" 日本語が含まれる場合のgrep指定
+if !exists('g:myjpgrepprg')
+  let myjpgrepprg = ''
+endif
+
+" Windowsから cygwin 1.7以降のgrep.exeを使用する場合に
+" UTF-8の一部文字が検索不可能な問題に対する対処
+" cygwin 1.5のgrep.exe等他のgrepを使用する場合は必ず 0
+if !exists('g:MyGrep_cygwin17')
+  let g:MyGrep_cygwin17 = 0
+endif
+" cygwin上で動作している場合は不要
+if has('win32unix')
+  let g:MyGrep_cygwin17 = 0
+endif
+" grepを実行する際に$LANGも設定する
+if !exists('g:MyGrep_LANG')
+  let g:MyGrep_LANG = ''
+  if s:MSWindows && !has('win32unix') && exists('$LANG') && $LANG=~ 'ja'
+    let g:MyGrep_LANG = 'ja_JP.SJIS'
+  endif
+endif
+" cygwin 1.7以降のエラーメッセージ抑制
+if !exists('$CYGWIN') && (has('win95') || has('win16') || has('win32') || has('win64'))
+  let $CYGWIN = 'nodosfilewarning'
+endif
+
 " 検索対象外のファイル指定
 if !exists('g:MyGrep_ExcludeReg')
   let g:MyGrep_ExcludeReg = '[~#]$\|\.dll$\|\.exe$\|\.lnk$\|\.o$\|\.obj$\|\.pdf$\|\.xls$'
@@ -818,7 +857,7 @@ endif
 " 使用するgrepのエンコーディング指定
 if !exists('g:MyGrep_ShellEncoding')
   let g:MyGrep_ShellEncoding = 'utf-8'
-  if s:MSWindows
+  if s:MSWindows && !has('win32unix')
     let g:MyGrep_ShellEncoding = 'cp932'
   endif
 endif
@@ -870,6 +909,10 @@ if !exists('g:MyGrep_errorformat')
   " let g:MyGrep_errorformat = '%f|%\\s%#%l|%m'
 endif
 
+" エラーメッセージ表示
+if !exists('g:MyGrep_error')
+  let g:MyGrep_error = 1
+endif
 " QFixHowm用の行儀の悪いオプション
 let g:MyGrep_FileListWipeTime = 0
 let g:MyGrep_qflist = []
@@ -1032,7 +1075,7 @@ function! s:MyGrep(pattern, searchPath, filepattern, fenc, addflag, ...)
       let g:MyGrep_Damemoji = 0
     endif
   endif
-  call s:SetGrepEnv('set', pattern)
+  call s:SetGrepEnv('set', pattern, a:fenc)
   let _grepcmd = 'g:MyGrepcmd_regexp'
   if g:MyGrep_Regexp == 0
     let _grepcmd = 'g:MyGrepcmd_fix'
@@ -1074,6 +1117,15 @@ function! s:MyGrep(pattern, searchPath, filepattern, fenc, addflag, ...)
   let file = ''
   redraw|echo 'QFixGrep : Parsing...'
   let g:MyGrep_qflist = s:ParseSearchResult(searchPath, retval, pattern, g:MyGrep_ShellEncoding, a:fenc)
+  if g:MyGrep_error && g:MyGrep_qflist == [] && g:MyGrep_retval != ''
+    echoe 'qfixlist : ' g:MyGrep_execmd
+    let from_encoding = g:MyGrep_ShellEncoding
+    let to_encoding = &enc
+    for mes in split(iconv(retval, from_encoding, to_encoding), '\n')
+      echoe mes
+    endfor
+    let choice = confirm('An error has occurred.', "&OK", 1, "E")
+  endif
   call s:SetGrepEnv('restore')
   " if g:MyGrep_Return
   "   let g:MyGrep_Return = 0
@@ -1108,7 +1160,7 @@ if !exists('g:qfixtempname')
   let g:qfixtempname = tempname()
 endif
 """"""""""""""""""""""""""""""
-" 非grep互換コマンド環境設定
+" grep環境設定
 """"""""""""""""""""""""""""""
 function! s:SetGrepEnv(mode, ...)
   if a:mode == 'set'
@@ -1119,6 +1171,22 @@ function! s:SetGrepEnv(mode, ...)
     endif
   endif
   if g:mygrepprg != 'findstr' && g:mygrepprg !~ 'jvgrep'
+    if !s:MSWindows || g:MyGrep_LANG == '' || g:MyGrep_cygwin17 == 0
+      return
+    endif
+    if a:mode == 'set'
+      " Wndowsのcygwin/GNU grepはUTF-8非対応なので検索不可文字列がある
+      " 対処としてコードページをUTF-8に変更してgrepする
+      let s:MyGrep_LANG          = g:MyGrep_LANG
+      let s:MyGrep_ShellEncoding = g:MyGrep_ShellEncoding
+      if a:2 == 'utf-8'
+        let g:MyGrep_LANG          = 'ja_JP.UTF-8'
+        let g:MyGrep_ShellEncoding = 'utf-8'
+      endif
+    elseif a:mode == 'restore'
+      let g:MyGrep_LANG          = s:MyGrep_LANG
+      let g:MyGrep_ShellEncoding = s:MyGrep_ShellEncoding
+    endif
     return
   endif
   if a:mode == 'set'
@@ -1151,6 +1219,7 @@ function! s:SetGrepEnv(mode, ...)
       let g:MyGrepcmd_fix_ignore      = '-i -F'
       let g:MyGrepcmd_recursive       = '-R'
       let g:MyGrep_Damemoji           = 0
+      let g:MyGrep_FileEncoding       = g:MyGrep_ShellEncoding
     endif
   elseif a:mode == 'restore'
     if s:mygrepprg != ''
@@ -1238,6 +1307,10 @@ function! s:ExecGrep(cmd, prg, searchPath, searchWord, from_encoding, to_encodin
   " 検索語ファイル作成
   if match(cmd, '#searchWordFile#') != -1
     let searchWord = iconv(a:searchWord, a:from_encoding, a:to_encoding)
+    if g:mygrepprg =~ 'jvgrep'
+      let to_encoding = 'utf-8'
+      let searchWord = iconv(a:searchWord, a:from_encoding, to_encoding)
+    endif
     let searchWordList = [searchWord]
     call writefile(searchWordList, g:qfixtempname, 'b')
     let cmd = substitute(cmd, '#searchWordFile#', s:GrepEscapeVimPattern(g:qfixtempname), 'g')
@@ -1245,11 +1318,6 @@ function! s:ExecGrep(cmd, prg, searchPath, searchWord, from_encoding, to_encodin
   if match(cmd, '#searchWord#') != -1
     let to_encoding = g:MyGrep_ShellEncoding
     let searchWord = iconv(a:searchWord, a:from_encoding, to_encoding)
-    if g:mygrepprg =~ 'jvgrep'
-      if match(searchWord, ' ')
-        let searchWord = '"' . searchWord . '"'
-      endif
-    endif
     let cmd = substitute(cmd, '#searchWord#', s:GrepEscapeVimPattern(searchWord), 'g')
   endif
 
@@ -1271,13 +1339,18 @@ function! s:ExecGrep(cmd, prg, searchPath, searchWord, from_encoding, to_encodin
   if g:MyGrep_LANG != ''
     let $LANG = saved_LANG
   endif
+  let saved_CYGWIN = $CYGWIN
+  let $CYGWIN = 'nodosfilewarning'
+
   let g:MyGrep_path   = a:searchPath
+  let g:MyGrep_execmd = cmd
   if s:debug
     let g:fudist_cmd = cmd
     let g:fudist_pat = a:filepattern
     let g:fudist_word = a:searchWord
   endif
   silent! let $PATH  = saved_path
+  silent! let $CYGWIN = saved_CYGWIN
   if exists('g:qfixtempname')
     silent! call delete(g:qfixtempname)
   endif
