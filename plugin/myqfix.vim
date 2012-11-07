@@ -5,7 +5,7 @@
 "                 http://sites.google.com/site/fudist/Home  (Japanese)
 "=============================================================================
 scriptencoding utf-8
-let s:version = 290
+let s:version = 291
 
 " What Is This:
 "   This plugin adds preview, sortings and advanced search to your quickfix window.
@@ -776,6 +776,9 @@ function! QFixSort(cmd)
     let bname = ''
     let bmtime = 0
     for d in save_qflist
+      if exists('d["mtime"]')
+        continue
+      endif
       if bname == bufname(d.bufnr)
         let d['mtime'] = bmtime
       else
@@ -802,22 +805,22 @@ endfunction
 """"""""""""""""""""""""""""""
 function! QFixCompareBufnr(v1, v2)
   if a:v1.bufnr == a:v2.bufnr
-    return (a:v1.lnum > a:v2.lnum?1:-1)
+    return (a:v1.lnum+0 > a:v2.lnum+0?1:-1)
   endif
   return a:v1.bufnr>a:v2.bufnr?1:-1
 endfunction
 function! QFixCompareName(v1, v2)
   if a:v1.bufnr == a:v2.bufnr
-    return (a:v1.lnum > a:v2.lnum?1:-1)
+    return (a:v1.lnum+0 > a:v2.lnum+0?1:-1)
   endif
-  return (bufname(a:v1.bufnr) . a:v1.lnum> bufname(a:v2.bufnr).a:v2.lnum?1:-1)
+  return (bufname(a:v1.bufnr)> bufname(a:v2.bufnr)?1:-1)
 endfunction
 function! QFixCompareTime(v1, v2)
   if a:v1.mtime == a:v2.mtime
     if a:v1.bufnr != a:v2.bufnr
       return (bufname(a:v1.bufnr) < bufname(a:v2.bufnr)?1:-1)
     endif
-    return (a:v1.lnum > a:v2.lnum?1:-1)
+    return (a:v1.lnum+0 > a:v2.lnum+0?1:-1)
   endif
   return (a:v1.mtime < a:v2.mtime?1:-1)
 endfunction
@@ -1051,6 +1054,7 @@ function! QFixCopen(...)
     echohl None
     return
   endif
+  let prevPath = escape(getcwd(), ' ')
   if a:0 && a:1 != ''
     let cmd = a:1
   else
@@ -1102,6 +1106,7 @@ function! QFixCopen(...)
   let g:QFix_PreviewEnable = saved_pe
   let &winfixheight = g:QFix_Copen_winfixheight
   let &winfixwidth  = g:QFix_Copen_winfixwidth
+  silent! exe 'lchdir ' . prevPath
 endfunction
 
 " Windowsパス正規化
