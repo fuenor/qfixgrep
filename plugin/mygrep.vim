@@ -96,9 +96,13 @@ endif
 if !exists('g:MyGrep_RecursiveMode')
   let g:MyGrep_RecursiveMode = 0
 endif
+" デフォルトソートパターン('', 'mtime', 'text', 'reverse')
+if !exists('g:MyGrep_Sort')
+  let g:MyGrep_Sort = ''
+endif
 " help
 if !exists('g:QFixGrep_Help')
-  let g:QFixGrep_Help= 'qfixgrep'
+  let g:QFixGrep_Help= 'qfixgrep_help'
 endif
 
 silent! function QFixGrepMenubar(menu, leader)
@@ -118,8 +122,9 @@ silent! function QFixGrepMenubar(menu, leader)
   call s:addMenu(menucmd, 'Vimgrepadd(&V)'              , 'V',  ':<C-u>call <SID>QFGrep("Vimgrepadd")<CR>')
   call s:addMenu(menucmd, 'GrepBufferadd(&B)'           , 'B',  ':<C-u>BGrepadd<CR>')
   exe printf(sepcmd, 2)
-  call s:addMenu(menucmd, 'CurrentDirMode(&D)'          , 'rD', ':<C-u>ToggleGrepCurrentDirMode<CR>')
+  call s:addMenu(menucmd, 'MultiEncoding(&G)'           , 'rm', ':<C-u>ToggleMultiEncodingGrep<CR>')
   call s:addMenu(menucmd, 'SetFileEncoding(&G)'         , 'rG', ':<C-u>call <SID>SetFileEncoding()<CR>')
+  call s:addMenu(menucmd, 'CurrentDirMode(&D)'          , 'rD', ':<C-u>ToggleGrepCurrentDirMode<CR>')
   call s:addMenu(menucmd, 'RecursiveMode(&M)'           , 'rM', ':<C-u>ToggleGrepRecursiveMode<CR>')
   exe printf(sepcmd, 3)
   call s:addMenu(menucmd, 'Load\ Quickfix(&L)'          , 'k',  ':<C-u>MyGrepReadResult<CR>\|:call QFixCopen()<CR>')
@@ -162,8 +167,9 @@ if g:MyGrep_Keymap
   exe 'silent! vnoremap <unique> <silent> '.s:MyGrep_Key.'v  :<C-u>call <SID>QFGrep("VimgrepV")<CR>'
 
   exe 'silent! nnoremap <unique> <silent> '.s:MyGrep_Key.'rD  :<C-u>ToggleGrepCurrentDirMode<CR>'
-  exe 'silent! nnoremap <unique> <silent> '.s:MyGrep_Key.'rG  :<C-u>call <SID>SetFileEncoding()<CR>'
   exe 'silent! nnoremap <unique> <silent> '.s:MyGrep_Key.'rM  :<C-u>ToggleGrepRecursiveMode<CR>'
+  exe 'silent! nnoremap <unique> <silent> '.s:MyGrep_Key.'rm  :<C-u>ToggleMultiEncodingGrep<CR>'
+  exe 'silent! nnoremap <unique> <silent> '.s:MyGrep_Key.'rG  :<C-u>call <SID>SetFileEncoding()<CR>'
 
   exe 'silent! nnoremap <unique> <silent> '.s:MyGrep_Key.'B  :<C-u>call <SID>BGrep("", 0, 0)<CR>'
   exe 'silent! vnoremap <unique> <silent> '.s:MyGrep_Key.'B  :<C-u>call <SID>BGrep("", -1, 0)<CR>'
@@ -187,6 +193,7 @@ endif
 """"""""""""""""""""""""""""""
 " トグルコマンド
 """"""""""""""""""""""""""""""
+command! -bang ToggleMultiEncodingGrep  call qfixlist#ToggleMultiEncodingGrep()
 command! -bang ToggleGrepCurrentDirMode call <SID>ToggleGrepCurrentDirMode()
 command! -bang ToggleGrepRecursiveMode  call <SID>ToggleGrepRecursiveMode()
 command! -bang ToggleDamemoji           call qfixlist#ToggleDamemoji()
@@ -245,7 +252,7 @@ function! QFixGrep(cmd, pattern, path, filepattern, fenc, ...)
   if !addflag
     let s:prevResult = []
   endif
-  let qflist = qfixlist#grep(pattern, path, filepattern, fenc)
+  let qflist = qfixlist#sortgrep(pattern, path, g:MyGrep_Sort, filepattern, fenc)
   let s:prevResult = extend(s:prevResult, qflist)
   if empty(qflist)
     redraw | echo 'QFixGrep : Not found!'
@@ -326,7 +333,7 @@ function! s:QFixCmdGrep(cmd, arg)
   if !addflag
     let s:prevResult = []
   endif
-  let qflist = qfixlist#grep(pattern, path, filepattern, fenc)
+  let qflist = qfixlist#sortgrep(pattern, path, g:MyGrep_Sort, filepattern, fenc)
   let s:prevResult = extend(s:prevResult, qflist)
   if empty(qflist)
     redraw | echo 'QFixGrep : Not found!'
