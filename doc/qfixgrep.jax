@@ -37,8 +37,15 @@ QFixGrepはVim用のプレビュー＆絞り込み検索(and検索)付きのgrep
 2. インストール                                         *qfixgrep_install*
 
 QFixGrepにruntimepathを通します。
+
+最低限必要なのはダウンロードしたファイルを解凍して作成されたディレクトリにラン
+タイムパスを通すことだけです
+QFixHowm/QFixMemoを使用しているならインストールは不要です。
+
+以降はディレクトリをqfixgrepとリネームしたとして解説を行いますので適宜読み替え
+てください。
 .vimrc >
-  set runtimepath+=c:/temp/qfixapp
+  set runtimepath+=c:/temp/qfixgrep
 
 この状態で現在使用しているgrepをそのまま実行してQuickfixウィンドウを開くだけで
 もプレビューや絞込みは有効になります。
@@ -468,8 +475,7 @@ Windowsで外部grepが使用できないがUTF-8の日本語文字列を検索�
 Android/iOSでgrepが使用できない場合に使用する文字列検索プラグインです。
 
 mygrep.vim (要 qfixlist.vim)
-QFixGrep/QFixMemoの検索用キーマップやコマンドラインコマンド等を設定していて、
-qfixlist.vimのコマンドを呼び出します。
+QFixGrepの検索用キーマップやコマンドラインコマンド等を設定しています。
 
   vim:tw=78:ts=8:ft=help:norl:et:
 
