@@ -55,9 +55,18 @@ if v:version < 700 || &cp || !has('quickfix')
 endif
 let s:debug = exists('g:fudist') ? g:fudist : 0
 
+" Quickfix処理制御
+" 0 : なにもしない
+" 1 : 常に行う
+" 2 : ロケーションリストのみ行う
+" 3 : QFixMemo/QFixGrepコマンドのみ行う
+if !exists('g:QFixWin_EnableMode')
+  let g:QFixWin_EnableMode = 2
+endif
+
 " ロケーションリスト使用
 if !exists('g:QFix_UseLocationList')
-  let g:QFix_UseLocationList = 0
+  let g:QFix_UseLocationList = 1
 endif
 " プレビューの有効/無効
 if !exists('g:QFix_PreviewEnable')
@@ -301,10 +310,36 @@ function! s:QFixSetVimgrepEnv(mode)
   endif
 endfunction
 
+" 処理有効化チェック
+function! s:QFixEnable(...)
+  if (a:0)
+    let g:QFixWin_EnableMode = a:1
+    return g:QFixWin_EnableMode
+  endif
+  if &buftype == 'quickfix'
+    if !exists('b:qfixwin_buftype')
+      call s:QFixSetBuftype()
+    endif
+    if (b:qfixwin_buftype == 1) && (g:QFixWin_EnableMode == 2)
+      return 1
+    endif
+  endif
+  if (g:QFixWin_EnableMode <= 1)
+    return g:QFixWin_EnableMode
+  endif
+  if !exists('b:qfix_enable') || b:qfix_enable == 0
+    return 0
+  endif
+  return 1
+endfunction
+
 """"""""""""""""""""""""""""""
 " QuickFixウィンドウ
 " BufWinEnter
 function! s:QFBufWinEnter(...)
+  if (s:QFixEnable() == 0)
+    return
+  endif
   call s:QFixSetBuftype()
   if b:qfixwin_buftype == g:QFix_UseLocationList
     let g:QFix_Win = expand('<abuf>')
@@ -431,6 +466,9 @@ endfunction
 
 " BufEnter
 function! s:QFixBufEnter(...)
+  if (s:QFixEnable() == 0)
+    return
+  endif
   if &previewwindow
     if s:QFix_PreviewWin == bufnr('%')
       if winnr('$') == 1
@@ -466,6 +504,9 @@ endfunction
 
 " BufLeave
 function! s:QFixBufLeave(...)
+  if (s:QFixEnable() == 0)
+    return
+  endif
   if &buftype == 'quickfix'
     exe 'let g:QFix_SelectedLine'.b:qfixwin_buftype.'='.line('.')
     let b:qfixwin_height = winheight(0)
@@ -484,6 +525,9 @@ endfunction
 
 " CursorHold
 function! s:QFPreview()
+  if (s:QFixEnable() == 0)
+    return
+  endif
   if g:QFix_PreviewEnable > 0 && &buftype == 'quickfix'
     call QFixPreview()
   endif
@@ -1068,6 +1112,8 @@ function! QFixCopen(...)
   let g:QFix_PreviewEnable = 0
   call QFixPclose()
   silent! exe cmd . 'open ' . g:QFix_Height
+  let b:qfixwin_buftype = g:QFix_UseLocationList
+  let b:qfix_enable = 1
   call s:QFixSetBuftype()
   if !exists('b:QFix_SearchPath')
     if exists('g:QFix_SearchPath'.b:qfixwin_buftype)
