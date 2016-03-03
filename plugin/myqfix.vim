@@ -967,11 +967,11 @@ function! s:SetBufqflistOpen(qf, ...)
   endif
   if type
     let qf = setloclist(0, a:qf)
-    silent! exe 'lchdir ' . s:escape(dir, ' ')
+    silent! exe 'chdir ' . s:escape(dir, ' ')
     lopen
   else
     let qf = setqflist(a:qf)
-    silent! exe 'lchdir ' . s:escape(dir, ' ')
+    silent! exe 'chdir ' . s:escape(dir, ' ')
     copen
   endif
   return qf
@@ -1156,7 +1156,7 @@ function! QFixCopen(...)
   elseif g:QFix_SearchPathMode == 2
     let spath = QFixGetqfRootPath(qf)
     if spath != ''
-      silent! exe 'lchdir ' . s:escape(spath, ' ')
+      silent! exe 'chdir ' . s:escape(spath, ' ')
       silent! exe cmd . 'open ' . g:QFix_Height
     endif
   endif
@@ -1175,7 +1175,7 @@ function! QFixCopen(...)
   let g:QFix_PreviewEnable = saved_pe
   let &winfixheight = g:QFix_Copen_winfixheight
   let &winfixwidth  = g:QFix_Copen_winfixwidth
-  silent! exe 'lchdir ' . prevPath
+  silent! exe 'chdir ' . prevPath
 endfunction
 
 " Windowsパス正規化
@@ -1207,7 +1207,7 @@ function! QFixSetqfShortPath()
   let spath = QFixGetqfRootPath(qf)
   let cmd = b:qfixwin_buftype ? 'l' : 'c'
   if spath != ''
-    silent! exe 'lchdir ' . s:escape(spath, ' ')
+    silent! exe 'chdir ' . s:escape(spath, ' ')
     silent! exe cmd . 'open '
     let w = &lines - winheight(0) - &cmdheight - (&laststatus > 0 ? 1 : 0)
     if w > 0 && &buftype == 'quickfix'
@@ -1268,7 +1268,7 @@ endfunction
 
 function! s:SetSearchPath(qf, path, ...)
   let prevPath = s:escape(getcwd(), ' ')
-  silent! exe 'lchdir ' . s:escape(expand(a:path), ' ')
+  silent! exe 'chdir ' . s:escape(expand(a:path), ' ')
   if a:0
     let cmd = a:1
   else
@@ -1287,7 +1287,7 @@ function! s:SetSearchPath(qf, path, ...)
     endif
   endfor
   if none <= 0
-    silent! exe 'lchdir ' . prevPath
+    silent! exe 'chdir ' . prevPath
     silent! exe cmd
   endif
   return none <= 0
@@ -1480,7 +1480,7 @@ function! QFixPreviewOpen(file, line, ...)
 
   let prevPath = s:escape(getcwd(), ' ')
   if g:QFix_SearchPath != ''
-    silent! exe 'lchdir ' . s:escape(g:QFix_SearchPath, ' ')
+    silent! exe 'chdir ' . s:escape(g:QFix_SearchPath, ' ')
   endif
 
   syntax clear
@@ -1534,7 +1534,7 @@ function! QFixPreviewOpen(file, line, ...)
     setlocal nocursorline
   endif
   setlocal nomodifiable
-  silent! exe 'lchdir ' . prevPath
+  silent! exe 'chdir ' . prevPath
   silent! wincmd p
 endfunction
 
