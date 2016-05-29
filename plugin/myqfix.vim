@@ -55,19 +55,22 @@ if v:version < 700 || &cp || !has('quickfix')
 endif
 let s:debug = exists('g:fudist') ? g:fudist : 0
 
-" Quickfix処理制御
-" 0 : なにもしない
-" 1 : 常に行う
-" 2 : ロケーションリストのみ行う
-" 3 : QFixMemo/QFixGrepコマンドのみ行う
+" Quickfixの拡張コマンドとプレビュー表示
+" 0 : 全て無効
+" 1 : QuickFix/ロケーションリストの両方で有効
+" 2 : ロケーションリストのみ有効
+" 3 : QFixMemo/QFixGrepコマンドのみ有効
 if !exists('g:QFixWin_EnableMode')
   let g:QFixWin_EnableMode = 2
 endif
 
-" ロケーションリスト使用
+" qfixlistの表示にロケーションリストを使用する
+" 0 : QuickFixウィンドウ
+" 1 : ロケーションリスト
 if !exists('g:QFix_UseLocationList')
   let g:QFix_UseLocationList = 1
 endif
+
 " プレビューの有効/無効
 if !exists('g:QFix_PreviewEnable')
   let g:QFix_PreviewEnable = 1
@@ -967,11 +970,11 @@ function! s:SetBufqflistOpen(qf, ...)
   endif
   if type
     let qf = setloclist(0, a:qf)
-    silent! exe 'lchdir ' . s:escape(dir, ' ')
+    silent! exe 'chdir ' . s:escape(dir, ' ')
     lopen
   else
     let qf = setqflist(a:qf)
-    silent! exe 'lchdir ' . s:escape(dir, ' ')
+    silent! exe 'chdir ' . s:escape(dir, ' ')
     copen
   endif
   return qf
@@ -1156,7 +1159,7 @@ function! QFixCopen(...)
   elseif g:QFix_SearchPathMode == 2
     let spath = QFixGetqfRootPath(qf)
     if spath != ''
-      silent! exe 'lchdir ' . s:escape(spath, ' ')
+      silent! exe 'chdir ' . s:escape(spath, ' ')
       silent! exe cmd . 'open ' . g:QFix_Height
     endif
   endif
@@ -1175,7 +1178,7 @@ function! QFixCopen(...)
   let g:QFix_PreviewEnable = saved_pe
   let &winfixheight = g:QFix_Copen_winfixheight
   let &winfixwidth  = g:QFix_Copen_winfixwidth
-  silent! exe 'lchdir ' . prevPath
+  silent! exe 'chdir ' . prevPath
 endfunction
 
 " Windowsパス正規化
@@ -1207,7 +1210,7 @@ function! QFixSetqfShortPath()
   let spath = QFixGetqfRootPath(qf)
   let cmd = b:qfixwin_buftype ? 'l' : 'c'
   if spath != ''
-    silent! exe 'lchdir ' . s:escape(spath, ' ')
+    silent! exe 'chdir ' . s:escape(spath, ' ')
     silent! exe cmd . 'open '
     let w = &lines - winheight(0) - &cmdheight - (&laststatus > 0 ? 1 : 0)
     if w > 0 && &buftype == 'quickfix'
@@ -1268,7 +1271,7 @@ endfunction
 
 function! s:SetSearchPath(qf, path, ...)
   let prevPath = s:escape(getcwd(), ' ')
-  silent! exe 'lchdir ' . s:escape(expand(a:path), ' ')
+  silent! exe 'chdir ' . s:escape(expand(a:path), ' ')
   if a:0
     let cmd = a:1
   else
@@ -1287,7 +1290,7 @@ function! s:SetSearchPath(qf, path, ...)
     endif
   endfor
   if none <= 0
-    silent! exe 'lchdir ' . prevPath
+    silent! exe 'chdir ' . prevPath
     silent! exe cmd
   endif
   return none <= 0
@@ -1480,7 +1483,7 @@ function! QFixPreviewOpen(file, line, ...)
 
   let prevPath = s:escape(getcwd(), ' ')
   if g:QFix_SearchPath != ''
-    silent! exe 'lchdir ' . s:escape(g:QFix_SearchPath, ' ')
+    silent! exe 'chdir ' . s:escape(g:QFix_SearchPath, ' ')
   endif
 
   syntax clear
@@ -1534,7 +1537,7 @@ function! QFixPreviewOpen(file, line, ...)
     setlocal nocursorline
   endif
   setlocal nomodifiable
-  silent! exe 'lchdir ' . prevPath
+  silent! exe 'chdir ' . prevPath
   silent! wincmd p
 endfunction
 
