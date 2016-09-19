@@ -112,7 +112,7 @@ function QFixGrepMenubar(menu, leader)
   call s:addMenu(menucmd, 'RGrep(&R)'                   , 're', ':<C-u>call <SID>QFGrep("RGrep")<CR>')
   call s:addMenu(menucmd, 'RFGrep(&R)'                  , 'rf', ':<C-u>call <SID>QFGrep("RFGrep")<CR>')
   call s:addMenu(menucmd, 'Vimgrep(&V)'                 , 'v',  ':<C-u>call <SID>QFGrep("Vimgrep")<CR>')
-  call s:addMenu(menucmd, 'GrepBuffer(&B)'              , 'b',  ':<C-u>BGrep<CR>')
+  call s:addMenu(menucmd, 'GrepBuffer(&B)'              , 'b',  ':<C-u>call <SID>BGrep("", 0, 0)<CR>')
   exe printf(sepcmd, 1)
 
   let submenu = '.GrepAdd\ (&\.)'
@@ -122,7 +122,7 @@ function QFixGrepMenubar(menu, leader)
   call s:addMenu(menucmd, 'RGrepadd(&R)'                , 'rE', ':<C-u>call <SID>QFGrep("RGrepadd")<CR>')
   call s:addMenu(menucmd, 'RFGrepadd(&R)'               , 'rF', ':<C-u>call <SID>QFGrep("RFGrepadd")<CR>')
   call s:addMenu(menucmd, 'Vimgrepadd(&V)'              , 'V',  ':<C-u>call <SID>QFGrep("Vimgrepadd")<CR>')
-  call s:addMenu(menucmd, 'GrepBufferadd(&B)'           , 'B',  ':<C-u>BGrepadd<CR>')
+  call s:addMenu(menucmd, 'GrepBufferadd(&B)'           , 'B',  ':<C-u>call <SID>BGrep("",0, 1)<CR>')
   exe printf(sepcmd, 2)
   let menucmd = 'amenu <silent> 41.333 '.a:menu.'.%s<Tab>'.'%s %s'
   call s:addMenu(menucmd, 'OpenWindow(&W)'              , '<C-w>\.',  ':<C-u>QFixCopen<CR>')
